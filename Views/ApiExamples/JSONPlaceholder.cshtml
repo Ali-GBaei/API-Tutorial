@@ -1,0 +1,332 @@
+@{
+    ViewData["Title"] = "JSONPlaceholder API Examples";
+}
+
+<div class="container">
+    <h1>@ViewData["Title"]</h1>
+    
+    <div class="alert alert-info">
+        <strong>JSONPlaceholder</strong> is a free fake REST API for testing and prototyping. No authentication required!
+        <br/>
+        <strong>Base URL:</strong> https://jsonplaceholder.typicode.com
+        <br/>
+        <strong>Documentation:</strong> <a href="https://jsonplaceholder.typicode.com" target="_blank">JSONPlaceholder Docs</a>
+    </div>
+
+    <h2>Why Use JSONPlaceholder?</h2>
+    <ul>
+        <li>✅ Perfect for learning and testing</li>
+        <li>✅ No authentication required</li>
+        <li>✅ No rate limiting</li>
+        <li>✅ Supports all HTTP methods (GET, POST, PUT, DELETE)</li>
+        <li>✅ Returns realistic fake data</li>
+    </ul>
+
+    <h2>Available Resources</h2>
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Posts</h5>
+                    <p>100 blog posts</p>
+                    <code>/posts</code>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Comments</h5>
+                    <p>500 comments</p>
+                    <code>/comments</code>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>Albums</h5>
+                    <p>100 albums</p>
+                    <code>/albums</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3>Example 1: GET All Posts</h3>
+    <pre class="bg-light p-3 rounded"><code>using System.Net.Http;
+using System.Text.Json;
+
+public class Post
+{
+    public int UserId { get; set; }
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string Body { get; set; }
+}
+
+public class JsonPlaceholderService
+{
+    private readonly HttpClient _httpClient;
+    private const string BASE_URL = "https://jsonplaceholder.typicode.com";
+
+    public JsonPlaceholderService()
+    {
+        _httpClient = new HttpClient();
+        _httpClient.BaseAddress = new Uri(BASE_URL);
+    }
+
+    public async Task&lt;List&lt;Post&gt;&gt; GetAllPostsAsync()
+    {
+        var response = await _httpClient.GetAsync("/posts");
+        response.EnsureSuccessStatusCode();
+        
+        var content = await response.Content.ReadAsStringAsync();
+        var posts = JsonSerializer.Deserialize&lt;List&lt;Post&gt;&gt;(content,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        
+        return posts;
+    }
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var service = new JsonPlaceholderService();
+var posts = await service.GetAllPostsAsync();
+
+foreach (var post in posts.Take(5))
+{
+    Console.WriteLine($"Post {post.Id}: {post.Title}");
+}</code></pre>
+
+    <h3>Example 2: GET Single Post</h3>
+    <pre class="bg-light p-3 rounded"><code>public async Task&lt;Post&gt; GetPostByIdAsync(int id)
+{
+    var response = await _httpClient.GetAsync($"/posts/{id}");
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    return JsonSerializer.Deserialize&lt;Post&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var post = await service.GetPostByIdAsync(1);
+Console.WriteLine($"Title: {post.Title}");
+Console.WriteLine($"Body: {post.Body}");</code></pre>
+
+    <h3>Example 3: POST - Create New Post</h3>
+    <pre class="bg-light p-3 rounded"><code>using System.Net.Http.Json;
+
+public async Task&lt;Post&gt; CreatePostAsync(Post newPost)
+{
+    // Send POST request with JSON body
+    var response = await _httpClient.PostAsJsonAsync("/posts", newPost);
+    response.EnsureSuccessStatusCode();
+    
+    // Deserialize response
+    var createdPost = await response.Content.ReadFromJsonAsync&lt;Post&gt;();
+    return createdPost;
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var newPost = new Post
+{
+    UserId = 1,
+    Title = "My New Post",
+    Body = "This is the content of my post."
+};
+
+var created = await service.CreatePostAsync(newPost);
+Console.WriteLine($"Created post with ID: {created.Id}");</code></pre>
+
+    <h3>Example 4: PUT - Update Post</h3>
+    <pre class="bg-light p-3 rounded"><code>public async Task&lt;Post&gt; UpdatePostAsync(int id, Post updatedPost)
+{
+    var response = await _httpClient.PutAsJsonAsync($"/posts/{id}", updatedPost);
+    response.EnsureSuccessStatusCode();
+    
+    return await response.Content.ReadFromJsonAsync&lt;Post&gt;();
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var updatedPost = new Post
+{
+    Id = 1,
+    UserId = 1,
+    Title = "Updated Title",
+    Body = "Updated content."
+};
+
+var result = await service.UpdatePostAsync(1, updatedPost);
+Console.WriteLine($"Updated: {result.Title}");</code></pre>
+
+    <h3>Example 5: DELETE - Remove Post</h3>
+    <pre class="bg-light p-3 rounded"><code>public async Task&lt;bool&gt; DeletePostAsync(int id)
+{
+    var response = await _httpClient.DeleteAsync($"/posts/{id}");
+    return response.IsSuccessStatusCode;
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var deleted = await service.DeletePostAsync(1);
+if (deleted)
+{
+    Console.WriteLine("Post deleted successfully");
+}</code></pre>
+
+    <h3>Example 6: Filtering and Nested Resources</h3>
+    <pre class="bg-light p-3 rounded"><code>public class Comment
+{
+    public int PostId { get; set; }
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public string Body { get; set; }
+}
+
+// Get comments for a specific post
+public async Task&lt;List&lt;Comment&gt;&gt; GetPostCommentsAsync(int postId)
+{
+    var response = await _httpClient.GetAsync($"/posts/{postId}/comments");
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    return JsonSerializer.Deserialize&lt;List&lt;Comment&gt;&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+}
+
+// Get posts by user ID (query parameter)
+public async Task&lt;List&lt;Post&gt;&gt; GetPostsByUserAsync(int userId)
+{
+    var response = await _httpClient.GetAsync($"/posts?userId={userId}");
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    return JsonSerializer.Deserialize&lt;List&lt;Post&gt;&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>// Get comments for post #1
+var comments = await service.GetPostCommentsAsync(1);
+foreach (var comment in comments.Take(3))
+{
+    Console.WriteLine($"{comment.Name}: {comment.Email}");
+}
+
+// Get all posts by user #1
+var userPosts = await service.GetPostsByUserAsync(1);
+Console.WriteLine($"User 1 has {userPosts.Count} posts");</code></pre>
+
+    <h3>Example 7: Complete CRUD Service</h3>
+    <pre class="bg-light p-3 rounded"><code>public class CompleteCrudService&lt;T&gt; where T : class
+{
+    private readonly HttpClient _httpClient;
+    private readonly string _resourcePath;
+
+    public CompleteCrudService(string resourcePath)
+    {
+        _httpClient = new HttpClient();
+        _httpClient.BaseAddress = new Uri("https://jsonplaceholder.typicode.com");
+        _resourcePath = resourcePath;
+    }
+
+    public async Task&lt;List&lt;T&gt;&gt; GetAllAsync()
+    {
+        var response = await _httpClient.GetAsync(_resourcePath);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync&lt;List&lt;T&gt;&gt;();
+    }
+
+    public async Task&lt;T&gt; GetByIdAsync(int id)
+    {
+        var response = await _httpClient.GetAsync($"{_resourcePath}/{id}");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync&lt;T&gt;();
+    }
+
+    public async Task&lt;T&gt; CreateAsync(T item)
+    {
+        var response = await _httpClient.PostAsJsonAsync(_resourcePath, item);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync&lt;T&gt;();
+    }
+
+    public async Task&lt;T&gt; UpdateAsync(int id, T item)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"{_resourcePath}/{id}", item);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync&lt;T&gt;();
+    }
+
+    public async Task&lt;bool&gt; DeleteAsync(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"{_resourcePath}/{id}");
+        return response.IsSuccessStatusCode;
+    }
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>// Create service for posts
+var postService = new CompleteCrudService&lt;Post&gt;("/posts");
+
+// Use all CRUD operations
+var allPosts = await postService.GetAllAsync();
+var singlePost = await postService.GetByIdAsync(1);
+var created = await postService.CreateAsync(newPost);
+var updated = await postService.UpdateAsync(1, updatedPost);
+var deleted = await postService.DeleteAsync(1);</code></pre>
+
+    <h2>All Available Endpoints</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Resource</th>
+                <th>Endpoint</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Posts</td>
+                <td><code>/posts</code></td>
+                <td>100</td>
+            </tr>
+            <tr>
+                <td>Comments</td>
+                <td><code>/comments</code></td>
+                <td>500</td>
+            </tr>
+            <tr>
+                <td>Albums</td>
+                <td><code>/albums</code></td>
+                <td>100</td>
+            </tr>
+            <tr>
+                <td>Photos</td>
+                <td><code>/photos</code></td>
+                <td>5000</td>
+            </tr>
+            <tr>
+                <td>Todos</td>
+                <td><code>/todos</code></td>
+                <td>200</td>
+            </tr>
+            <tr>
+                <td>Users</td>
+                <td><code>/users</code></td>
+                <td>10</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="alert alert-warning mt-4">
+        <strong>Note:</strong> JSONPlaceholder is a fake API. POST, PUT, and DELETE requests will be simulated but won't 
+        actually modify the server data. The responses will look like the operations succeeded, which makes it perfect for testing!
+    </div>
+
+    <div class="mt-4">
+        <a asp-controller="ApiExamples" asp-action="OpenWeather" class="btn btn-secondary">Previous: OpenWeather API</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Back to Home</a>
+    </div>
+</div>

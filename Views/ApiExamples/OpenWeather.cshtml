@@ -1,0 +1,298 @@
+@{
+    ViewData["Title"] = "OpenWeather API Examples";
+}
+
+<div class="container">
+    <h1>@ViewData["Title"]</h1>
+    
+    <div class="alert alert-info">
+        <strong>OpenWeather API</strong> provides weather data including current weather, forecasts, and historical data for any location.
+        <br/>
+        <strong>Base URL:</strong> https://api.openweathermap.org/data/2.5
+        <br/>
+        <strong>Documentation:</strong> <a href="https://openweathermap.org/api" target="_blank">OpenWeather API Docs</a>
+        <br/>
+        <strong>Note:</strong> Requires free API key from <a href="https://openweathermap.org/appid" target="_blank">openweathermap.org</a>
+    </div>
+
+    <h2>Getting Started</h2>
+    <ol>
+        <li>Sign up at <a href="https://openweathermap.org/appid" target="_blank">OpenWeatherMap</a></li>
+        <li>Get your free API key</li>
+        <li>Use the API key in your requests (usually takes a few hours to activate)</li>
+    </ol>
+
+    <h3>Example 1: Get Current Weather by City Name</h3>
+    <pre class="bg-light p-3 rounded"><code>using System.Net.Http;
+using System.Text.Json;
+
+public class WeatherData
+{
+    public Main Main { get; set; }
+    public Weather[] Weather { get; set; }
+    public Wind Wind { get; set; }
+    public string Name { get; set; }
+}
+
+public class Main
+{
+    public double Temp { get; set; }
+    public double FeelsLike { get; set; }
+    public double TempMin { get; set; }
+    public double TempMax { get; set; }
+    public int Pressure { get; set; }
+    public int Humidity { get; set; }
+}
+
+public class Weather
+{
+    public int Id { get; set; }
+    public string Main { get; set; }
+    public string Description { get; set; }
+    public string Icon { get; set; }
+}
+
+public class Wind
+{
+    public double Speed { get; set; }
+    public int Deg { get; set; }
+}
+
+public class OpenWeatherService
+{
+    private readonly HttpClient _httpClient;
+    private const string API_KEY = "your-api-key-here";
+    private const string BASE_URL = "https://api.openweathermap.org/data/2.5";
+
+    public OpenWeatherService()
+    {
+        _httpClient = new HttpClient();
+        _httpClient.BaseAddress = new Uri(BASE_URL);
+    }
+
+    public async Task&lt;WeatherData&gt; GetCurrentWeatherAsync(string city)
+    {
+        var response = await _httpClient.GetAsync(
+            $"/weather?q={city}&appid={API_KEY}&units=metric");
+        
+        response.EnsureSuccessStatusCode();
+        
+        var content = await response.Content.ReadAsStringAsync();
+        var weather = JsonSerializer.Deserialize&lt;WeatherData&gt;(content,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        
+        return weather;
+    }
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var service = new OpenWeatherService();
+var weather = await service.GetCurrentWeatherAsync("London");
+
+Console.WriteLine($"City: {weather.Name}");
+Console.WriteLine($"Temperature: {weather.Main.Temp}°C");
+Console.WriteLine($"Feels Like: {weather.Main.FeelsLike}°C");
+Console.WriteLine($"Description: {weather.Weather[0].Description}");
+Console.WriteLine($"Humidity: {weather.Main.Humidity}%");
+Console.WriteLine($"Wind Speed: {weather.Wind.Speed} m/s");</code></pre>
+
+    <h3>Example 2: Get Weather by Coordinates</h3>
+    <pre class="bg-light p-3 rounded"><code>public async Task&lt;WeatherData&gt; GetWeatherByCoordinatesAsync(double lat, double lon)
+{
+    var response = await _httpClient.GetAsync(
+        $"/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric");
+    
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    return JsonSerializer.Deserialize&lt;WeatherData&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>// New York coordinates
+var weather = await service.GetWeatherByCoordinatesAsync(40.7128, -74.0060);
+Console.WriteLine($"Weather in {weather.Name}: {weather.Main.Temp}°C");</code></pre>
+
+    <h3>Example 3: Get 5-Day Forecast</h3>
+    <pre class="bg-light p-3 rounded"><code>public class ForecastData
+{
+    public List&lt;ForecastItem&gt; List { get; set; }
+    public City City { get; set; }
+}
+
+public class ForecastItem
+{
+    public long Dt { get; set; }
+    public Main Main { get; set; }
+    public Weather[] Weather { get; set; }
+    public string DtTxt { get; set; }
+}
+
+public class City
+{
+    public string Name { get; set; }
+    public string Country { get; set; }
+}
+
+public async Task&lt;ForecastData&gt; GetForecastAsync(string city)
+{
+    var response = await _httpClient.GetAsync(
+        $"/forecast?q={city}&appid={API_KEY}&units=metric");
+    
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    return JsonSerializer.Deserialize&lt;ForecastData&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var forecast = await service.GetForecastAsync("Paris");
+
+Console.WriteLine($"5-Day Forecast for {forecast.City.Name}:");
+foreach (var item in forecast.List.Take(8)) // Next 24 hours (3-hour intervals)
+{
+    var date = DateTimeOffset.FromUnixTimeSeconds(item.Dt).DateTime;
+    Console.WriteLine($"{date:yyyy-MM-dd HH:mm} - {item.Main.Temp}°C - {item.Weather[0].Description}");
+}</code></pre>
+
+    <h3>Example 4: Complete Service with Error Handling</h3>
+    <pre class="bg-light p-3 rounded"><code>using Microsoft.Extensions.Configuration;
+
+public class ImprovedOpenWeatherService
+{
+    private readonly HttpClient _httpClient;
+    private readonly string _apiKey;
+
+    public ImprovedOpenWeatherService(IConfiguration configuration)
+    {
+        _httpClient = new HttpClient();
+        _httpClient.BaseAddress = new Uri("https://api.openweathermap.org/data/2.5");
+        _apiKey = configuration["ApiSettings:OpenWeatherApiKey"];
+    }
+
+    public async Task&lt;WeatherData&gt; GetCurrentWeatherAsync(string city)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(
+                $"/weather?q={city}&appid={_apiKey}&units=metric");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException(
+                    $"Weather API returned {response.StatusCode}: {error}");
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize&lt;WeatherData&gt;(content,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error fetching weather: {ex.Message}");
+            throw;
+        }
+    }
+}</code></pre>
+
+    <h3>Example 5: Using Configuration for API Key</h3>
+    <p>Store your API key securely in <code>appsettings.json</code>:</p>
+    <pre class="bg-light p-3 rounded"><code>// appsettings.json
+{
+  "ApiSettings": {
+    "OpenWeatherApiKey": "your-api-key-here"
+  }
+}
+
+// Program.cs or Startup.cs
+builder.Services.AddHttpClient&lt;IWeatherService, OpenWeatherService&gt;();
+
+// In your service
+public class OpenWeatherService : IWeatherService
+{
+    private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
+
+    public OpenWeatherService(HttpClient httpClient, IConfiguration configuration)
+    {
+        _httpClient = httpClient;
+        _configuration = configuration;
+        _httpClient.BaseAddress = new Uri("https://api.openweathermap.org/data/2.5");
+    }
+}</code></pre>
+
+    <h2>Common API Parameters</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Description</th>
+                <th>Example</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>q</code></td>
+                <td>City name</td>
+                <td>q=London</td>
+            </tr>
+            <tr>
+                <td><code>lat</code>, <code>lon</code></td>
+                <td>Geographic coordinates</td>
+                <td>lat=51.5074&lon=-0.1278</td>
+            </tr>
+            <tr>
+                <td><code>appid</code></td>
+                <td>Your API key (required)</td>
+                <td>appid=your-key</td>
+            </tr>
+            <tr>
+                <td><code>units</code></td>
+                <td>Units of measurement (metric, imperial)</td>
+                <td>units=metric</td>
+            </tr>
+            <tr>
+                <td><code>lang</code></td>
+                <td>Language for description</td>
+                <td>lang=en</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Common Endpoints</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Endpoint</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>GET /weather</code></td>
+                <td>Current weather data</td>
+            </tr>
+            <tr>
+                <td><code>GET /forecast</code></td>
+                <td>5-day forecast with 3-hour intervals</td>
+            </tr>
+            <tr>
+                <td><code>GET /forecast/daily</code></td>
+                <td>16-day daily forecast</td>
+            </tr>
+            <tr>
+                <td><code>GET /air_pollution</code></td>
+                <td>Air pollution data</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="mt-4">
+        <a asp-controller="ApiExamples" asp-action="GitHub" class="btn btn-secondary">Previous: GitHub API</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Back to Home</a>
+        <a asp-controller="ApiExamples" asp-action="JSONPlaceholder" class="btn btn-primary">Next: JSONPlaceholder API</a>
+    </div>
+</div>

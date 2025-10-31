@@ -1,0 +1,191 @@
+@{
+    ViewData["Title"] = "API Authentication";
+}
+
+<div class="container">
+    <h1>@ViewData["Title"]</h1>
+    
+    <div class="alert alert-warning">
+        <strong>Important:</strong> Authentication ensures that only authorized users can access protected API resources.
+        Never share your API keys or tokens publicly!
+    </div>
+
+    <h2>Common Authentication Methods</h2>
+
+    <div class="mb-4">
+        <h3>1. API Key Authentication</h3>
+        <p>The simplest form - pass an API key in the request header or query parameter.</p>
+        
+        <h5>Example: API Key in Header</h5>
+        <pre class="bg-light p-3 rounded"><code>using System.Net.Http;
+
+public class ApiKeyExample
+{
+    private readonly HttpClient _httpClient;
+    private const string API_KEY = "your-api-key-here";
+
+    public ApiKeyExample()
+    {
+        _httpClient = new HttpClient();
+        // Add API key to default headers
+        _httpClient.DefaultRequestHeaders.Add("X-API-Key", API_KEY);
+    }
+
+    public async Task&lt;string&gt; GetWeatherAsync(string city)
+    {
+        var response = await _httpClient.GetAsync(
+            $"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}");
+        
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }
+}</code></pre>
+    </div>
+
+    <div class="mb-4">
+        <h3>2. Bearer Token Authentication</h3>
+        <p>Uses a token (usually JWT) passed in the Authorization header.</p>
+        
+        <h5>Example: Bearer Token</h5>
+        <pre class="bg-light p-3 rounded"><code>using System.Net.Http.Headers;
+
+public class BearerTokenExample
+{
+    private readonly HttpClient _httpClient;
+
+    public BearerTokenExample(string bearerToken)
+    {
+        _httpClient = new HttpClient();
+        // Set Authorization header with Bearer token
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", bearerToken);
+    }
+
+    public async Task&lt;string&gt; GetUserProfileAsync()
+    {
+        var response = await _httpClient.GetAsync(
+            "https://api.example.com/user/profile");
+        
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }
+}</code></pre>
+    </div>
+
+    <div class="mb-4">
+        <h3>3. Basic Authentication</h3>
+        <p>Uses username and password encoded in Base64.</p>
+        
+        <h5>Example: Basic Auth</h5>
+        <pre class="bg-light p-3 rounded"><code>using System;
+using System.Text;
+using System.Net.Http.Headers;
+
+public class BasicAuthExample
+{
+    private readonly HttpClient _httpClient;
+
+    public BasicAuthExample(string username, string password)
+    {
+        _httpClient = new HttpClient();
+        
+        // Encode credentials
+        var credentials = Convert.ToBase64String(
+            Encoding.ASCII.GetBytes($"{username}:{password}"));
+        
+        // Set Authorization header
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Basic", credentials);
+    }
+
+    public async Task&lt;string&gt; GetProtectedResourceAsync()
+    {
+        var response = await _httpClient.GetAsync(
+            "https://api.example.com/protected");
+        
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }
+}</code></pre>
+    </div>
+
+    <div class="mb-4">
+        <h3>4. OAuth 2.0</h3>
+        <p>More complex but secure - used by many popular APIs (Google, GitHub, Facebook).</p>
+        
+        <h5>OAuth Flow Overview</h5>
+        <ol>
+            <li>User grants permission to your app</li>
+            <li>Your app receives an authorization code</li>
+            <li>Exchange code for access token</li>
+            <li>Use access token in API requests</li>
+        </ol>
+
+        <h5>Example: Using Access Token from OAuth</h5>
+        <pre class="bg-light p-3 rounded"><code>public class OAuthExample
+{
+    private readonly HttpClient _httpClient;
+
+    public async Task&lt;string&gt; AccessGitHubApiAsync(string accessToken)
+    {
+        _httpClient = new HttpClient();
+        _httpClient.DefaultRequestHeaders.UserAgent.Add(
+            new ProductInfoHeaderValue("MyApp", "1.0"));
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await _httpClient.GetAsync(
+            "https://api.github.com/user");
+        
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }
+}</code></pre>
+    </div>
+
+    <h2>Best Practices</h2>
+    <div class="card">
+        <div class="card-body">
+            <ul>
+                <li>✅ Store API keys in environment variables or secure configuration (not in code)</li>
+                <li>✅ Use HTTPS for all API communications</li>
+                <li>✅ Implement rate limiting to prevent abuse</li>
+                <li>✅ Rotate API keys periodically</li>
+                <li>✅ Use the minimum required permissions</li>
+                <li>❌ Never commit API keys to version control</li>
+                <li>❌ Never share API keys in public repositories</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2>Storing API Keys Securely in ASP.NET Core</h2>
+    <pre class="bg-light p-3 rounded"><code>// appsettings.json (for local development only)
+{
+  "ApiSettings": {
+    "OpenWeatherApiKey": "your-key-here"
+  }
+}
+
+// Access in code
+public class WeatherService
+{
+    private readonly IConfiguration _configuration;
+
+    public WeatherService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
+    public string GetApiKey()
+    {
+        return _configuration["ApiSettings:OpenWeatherApiKey"];
+    }
+}
+
+// For production, use Azure Key Vault, AWS Secrets Manager, etc.</code></pre>
+
+    <div class="mt-4">
+        <a asp-controller="ApiExamples" asp-action="RestBasics" class="btn btn-secondary">Previous: REST Basics</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Back to Home</a>
+    </div>
+</div>

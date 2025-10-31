@@ -1,0 +1,231 @@
+@{
+    ViewData["Title"] = "GitHub API Examples";
+}
+
+<div class="container">
+    <h1>@ViewData["Title"]</h1>
+    
+    <div class="alert alert-info">
+        <strong>GitHub API</strong> allows you to interact with GitHub repositories, users, issues, pull requests, and more.
+        <br/>
+        <strong>Base URL:</strong> https://api.github.com
+        <br/>
+        <strong>Documentation:</strong> <a href="https://docs.github.com/en/rest" target="_blank">GitHub REST API Docs</a>
+    </div>
+
+    <h2>Getting Started</h2>
+    <p>GitHub API allows up to 60 requests per hour for unauthenticated requests, and 5,000 for authenticated requests.</p>
+
+    <h3>Example 1: Get User Information</h3>
+    <pre class="bg-light p-3 rounded"><code>using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
+
+public class GitHubUser
+{
+    public string Login { get; set; }
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Bio { get; set; }
+    public int PublicRepos { get; set; }
+    public int Followers { get; set; }
+    public int Following { get; set; }
+}
+
+public class GitHubApiService
+{
+    private readonly HttpClient _httpClient;
+
+    public GitHubApiService()
+    {
+        _httpClient = new HttpClient();
+        _httpClient.BaseAddress = new Uri("https://api.github.com");
+        // GitHub requires User-Agent header
+        _httpClient.DefaultRequestHeaders.UserAgent.Add(
+            new ProductInfoHeaderValue("MyApp", "1.0"));
+    }
+
+    public async Task&lt;GitHubUser&gt; GetUserAsync(string username)
+    {
+        var response = await _httpClient.GetAsync($"/users/{username}");
+        response.EnsureSuccessStatusCode();
+        
+        var content = await response.Content.ReadAsStringAsync();
+        var user = JsonSerializer.Deserialize&lt;GitHubUser&gt;(content, 
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        
+        return user;
+    }
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var service = new GitHubApiService();
+var user = await service.GetUserAsync("octocat");
+Console.WriteLine($"Name: {user.Name}");
+Console.WriteLine($"Followers: {user.Followers}");
+Console.WriteLine($"Public Repos: {user.PublicRepos}");</code></pre>
+
+    <h3>Example 2: Get Repository Information</h3>
+    <pre class="bg-light p-3 rounded"><code>public class GitHubRepository
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string FullName { get; set; }
+    public string Description { get; set; }
+    public int StargazersCount { get; set; }
+    public int ForksCount { get; set; }
+    public string Language { get; set; }
+}
+
+public async Task&lt;GitHubRepository&gt; GetRepositoryAsync(string owner, string repo)
+{
+    var response = await _httpClient.GetAsync($"/repos/{owner}/{repo}");
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    var repository = JsonSerializer.Deserialize&lt;GitHubRepository&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    
+    return repository;
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var repo = await service.GetRepositoryAsync("microsoft", "dotnet");
+Console.WriteLine($"Repository: {repo.FullName}");
+Console.WriteLine($"Description: {repo.Description}");
+Console.WriteLine($"Stars: {repo.StargazersCount}");
+Console.WriteLine($"Language: {repo.Language}");</code></pre>
+
+    <h3>Example 3: List User Repositories</h3>
+    <pre class="bg-light p-3 rounded"><code>public async Task&lt;List&lt;GitHubRepository&gt;&gt; GetUserRepositoriesAsync(string username)
+{
+    var response = await _httpClient.GetAsync($"/users/{username}/repos");
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    var repositories = JsonSerializer.Deserialize&lt;List&lt;GitHubRepository&gt;&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    
+    return repositories;
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var repos = await service.GetUserRepositoriesAsync("octocat");
+foreach (var repo in repos.Take(5))
+{
+    Console.WriteLine($"{repo.Name} - ⭐ {repo.StargazersCount}");
+}</code></pre>
+
+    <h3>Example 4: Search Repositories</h3>
+    <pre class="bg-light p-3 rounded"><code>public class SearchResult
+{
+    public int TotalCount { get; set; }
+    public List&lt;GitHubRepository&gt; Items { get; set; }
+}
+
+public async Task&lt;SearchResult&gt; SearchRepositoriesAsync(string query)
+{
+    var encodedQuery = Uri.EscapeDataString(query);
+    var response = await _httpClient.GetAsync(
+        $"/search/repositories?q={encodedQuery}&sort=stars&order=desc");
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    var result = JsonSerializer.Deserialize&lt;SearchResult&gt;(content,
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    
+    return result;
+}</code></pre>
+
+    <h5>Usage:</h5>
+    <pre class="bg-light p-3 rounded"><code>var result = await service.SearchRepositoriesAsync("language:csharp stars:>1000");
+Console.WriteLine($"Found {result.TotalCount} repositories");
+foreach (var repo in result.Items.Take(10))
+{
+    Console.WriteLine($"{repo.FullName} - ⭐ {repo.StargazersCount}");
+}</code></pre>
+
+    <h3>Example 5: Authenticated Requests (Using Personal Access Token)</h3>
+    <pre class="bg-light p-3 rounded"><code>public class AuthenticatedGitHubService
+{
+    private readonly HttpClient _httpClient;
+
+    public AuthenticatedGitHubService(string token)
+    {
+        _httpClient = new HttpClient();
+        _httpClient.BaseAddress = new Uri("https://api.github.com");
+        _httpClient.DefaultRequestHeaders.UserAgent.Add(
+            new ProductInfoHeaderValue("MyApp", "1.0"));
+        // Add authentication token
+        _httpClient.DefaultRequestHeaders.Authorization = 
+            new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    public async Task&lt;GitHubUser&gt; GetAuthenticatedUserAsync()
+    {
+        var response = await _httpClient.GetAsync("/user");
+        response.EnsureSuccessStatusCode();
+        
+        var content = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize&lt;GitHubUser&gt;(content,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    }
+}</code></pre>
+
+    <h2>Rate Limiting</h2>
+    <pre class="bg-light p-3 rounded"><code>public async Task CheckRateLimitAsync()
+{
+    var response = await _httpClient.GetAsync("/rate_limit");
+    response.EnsureSuccessStatusCode();
+    
+    var content = await response.Content.ReadAsStringAsync();
+    Console.WriteLine(content);
+    
+    // Check headers for rate limit info
+    if (response.Headers.TryGetValues("X-RateLimit-Remaining", out var values))
+    {
+        Console.WriteLine($"Remaining requests: {values.FirstOrDefault()}");
+    }
+}</code></pre>
+
+    <h2>Common Endpoints</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Endpoint</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>GET /users/:username</code></td>
+                <td>Get user information</td>
+            </tr>
+            <tr>
+                <td><code>GET /repos/:owner/:repo</code></td>
+                <td>Get repository information</td>
+            </tr>
+            <tr>
+                <td><code>GET /users/:username/repos</code></td>
+                <td>List user repositories</td>
+            </tr>
+            <tr>
+                <td><code>GET /search/repositories</code></td>
+                <td>Search repositories</td>
+            </tr>
+            <tr>
+                <td><code>GET /repos/:owner/:repo/issues</code></td>
+                <td>List repository issues</td>
+            </tr>
+            <tr>
+                <td><code>GET /user</code></td>
+                <td>Get authenticated user (requires auth)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="mt-4">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Back to Home</a>
+        <a asp-controller="ApiExamples" asp-action="OpenWeather" class="btn btn-primary">Next: OpenWeather API</a>
+    </div>
+</div>
