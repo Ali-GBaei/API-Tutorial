@@ -2,6 +2,8 @@
 
 An educational ASP.NET Core MVC website that teaches developers how to use APIs in their code with complete examples and explanations.
 
+<img width="1920" height="1080" alt="Screenshot 2025-11-01 004223" src="https://github.com/user-attachments/assets/09198051-0051-4ebb-9032-9c9108d51018" />
+
 ## Features
 
 - **Comprehensive API Learning**: Learn what APIs are and how to use them effectively
@@ -69,6 +71,9 @@ APITutorial/
 - HTTP status codes
 - Error handling
 
+<img width="1920" height="1080" alt="Screenshot 2025-11-01 004235" src="https://github.com/user-attachments/assets/382d6538-9cf4-4142-86d6-5902f8fc9e30" />
+
+
 ### Authentication
 - API Key Authentication
 - Bearer Token Authentication
@@ -83,6 +88,8 @@ APITutorial/
 - Search repositories
 - Rate limiting
 - Authenticated requests
+
+<img width="1920" height="1080" alt="Screenshot 2025-11-01 004312" src="https://github.com/user-attachments/assets/9d1d2237-614d-4388-a15e-28f95a78f0e2" />
 
 ### OpenWeather API
 - Current weather data
